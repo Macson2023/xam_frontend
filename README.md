@@ -127,7 +127,50 @@ src/
 
 ## Docker
 
-Образ собирает статику и раздаёт её через nginx, проксируя `/api` и `/ws` на бэкенд:
+Образ собирает статику и раздаёт её через nginx, проксируя `/api` и `/ws` на бэкенд.
+
+### Docker Compose
+
+Сначала поднимите бэкенд (он публикует порт `8000`):
+
+```bash
+# в каталоге xam_backend
+docker compose up -d
+```
+
+Затем соберите и запустите фронтенд:
+
+```bash
+# в каталоге xam_frontend
+docker compose up -d --build
+```
+
+Откройте http://localhost:8080. По умолчанию nginx проксирует запросы на
+`http://host.docker.internal:8000`, то есть на бэкенд, запущенный на хосте.
+
+Настройки задаются в `.env` (см. [`.env.example`](.env.example)) или через окружение:
+
+| Переменная | По умолчанию | Назначение |
+| --- | --- | --- |
+| `FRONTEND_PORT` | `8080` | Порт на хосте |
+| `BACKEND_ORIGIN` | `http://host.docker.internal:8000` | Адрес бэкенда для `/api` и `/ws` |
+| `VITE_API_URL` | пусто | Origin API, вшивается в сборку (обычно не нужен при проксировании) |
+| `VITE_WS_URL` | пусто | Origin WebSocket, вшивается в сборку |
+
+```bash
+# пример: другой порт и бэкенд по имени сервиса
+FRONTEND_PORT=3000 BACKEND_ORIGIN=http://api:8000 docker compose up -d --build
+```
+
+Полезные команды:
+
+```bash
+docker compose ps        # статус и health-check
+docker compose logs -f   # логи nginx
+docker compose down      # остановить
+```
+
+### Без Compose
 
 ```bash
 docker build -t xam_frontend .
@@ -136,8 +179,8 @@ docker run --rm -p 8080:80 \
   xam_frontend
 ```
 
-Откройте http://localhost:8080. В контейнерной сети укажите `BACKEND_ORIGIN` с именем
-сервиса бэкенда (например, `http://api:8000`). Health-check nginx: `GET /`.
+В контейнерной сети укажите `BACKEND_ORIGIN` с именем сервиса бэкенда
+(например, `http://api:8000`). Health-check nginx: `GET /healthz`.
 
 ## Ограничения
 
