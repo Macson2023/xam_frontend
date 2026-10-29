@@ -33,6 +33,7 @@ export interface MessengerState {
   closeChat: () => void;
   startChat: (participant: User) => Promise<void>;
   sendMessage: (content: string) => Promise<void>;
+  sendImage: (file: File, caption: string) => Promise<void>;
   retryMessage: (message: ChatMessage) => Promise<void>;
   loadOlder: () => Promise<void>;
   reload: () => Promise<void>;
@@ -46,6 +47,10 @@ function byActivity(a: Chat, b: Chat): number {
 
 function isUnauthorized(error: unknown): boolean {
   return error instanceof ApiError && error.status === 401;
+}
+
+function failureText(error: unknown, fallback: string): string {
+  return error instanceof Error && error.message ? error.message : fallback;
 }
 
 export function useMessenger(
@@ -266,6 +271,10 @@ export function useMessenger(
         chat_id: chatId,
         sender_id: user.id,
         content,
+        message_type: 'text',
+        image_url: null,
+        image_mime_type: null,
+        image_size_bytes: null,
         client_message_id: clientMessageId,
         created_at: new Date().toISOString(),
         is_read: false,
@@ -296,7 +305,74 @@ export function useMessenger(
         }
         setMessagesByChat((prev) => ({
           ...prev,
-          [chatId]: markMessageFailed(prev[chatId] ?? [], clientMessageId),
+          [chatId]: markMessageFailed(
+            prev[chatId] ?? [],
+            clientMessageId,
+            failureText(error, 'Не удалось отправить сообщение'),
+          ),
+        }));
+      }
+    },
+    [token, user.id, onUnauthorized, touchChat],
+  );
+
+  const sendImage = useCallback(
+    async (file: File, rawCaption: string) => {
+      const chatId = activeChatIdRef.current;
+      if (!chatId) {
+        return;
+      }
+      const caption = rawCaption.trim();
+      const clientMessageId = createUuid();
+      const previewUrl = URL.createObjectURL(file);
+      const optimistic: ChatMessage = {
+        id: clientMessageId,
+        chat_id: chatId,
+        sender_id: user.id,
+        content: caption,
+        message_type: 'image',
+        image_url: null,
+        image_mime_type: file.type || null,
+        image_size_bytes: file.size,
+        client_message_id: clientMessageId,
+        created_at: new Date().toISOString(),
+        is_read: false,
+        pending: true,
+        uploadFile: file,
+        previewUrl,
+      };
+
+      setMessagesByChat((prev) => ({
+        ...prev,
+        [chatId]: mergeMessages(prev[chatId] ?? [], optimistic),
+      }));
+      touchChat(chatId, optimistic);
+
+      try {
+        const saved = await api.sendImage(
+          chatId,
+          { file, caption, client_message_id: clientMessageId },
+          token,
+        );
+        URL.revokeObjectURL(previewUrl);
+        setMessagesByChat((prev) => ({
+          ...prev,
+          [chatId]: mergeMessages(prev[chatId] ?? [], saved),
+        }));
+        touchChat(chatId, saved);
+      } catch (error) {
+        if (isUnauthorized(error)) {
+          URL.revokeObjectURL(previewUrl);
+          onUnauthorized();
+          return;
+        }
+        setMessagesByChat((prev) => ({
+          ...prev,
+          [chatId]: markMessageFailed(
+            prev[chatId] ?? [],
+            clientMessageId,
+            failureText(error, 'Не удалось отправить изображение'),
+          ),
         }));
       }
     },
@@ -314,11 +390,25 @@ export function useMessenger(
         [chatId]: markMessagePending(prev[chatId] ?? [], message.id),
       }));
       try {
-        const saved = await api.sendMessage(
-          chatId,
-          { content: message.content, client_message_id: message.client_message_id },
-          token,
-        );
+        const saved =
+          message.message_type === 'image' && message.uploadFile
+            ? await api.sendImage(
+                chatId,
+                {
+                  file: message.uploadFile,
+                  caption: message.content,
+                  client_message_id: message.client_message_id,
+                },
+                token,
+              )
+            : await api.sendMessage(
+                chatId,
+                { content: message.content, client_message_id: message.client_message_id },
+                token,
+              );
+        if (message.previewUrl) {
+          URL.revokeObjectURL(message.previewUrl);
+        }
         setMessagesByChat((prev) => ({
           ...prev,
           [chatId]: mergeMessages(prev[chatId] ?? [], saved),
@@ -331,7 +421,11 @@ export function useMessenger(
         }
         setMessagesByChat((prev) => ({
           ...prev,
-          [chatId]: markMessageFailed(prev[chatId] ?? [], message.id),
+          [chatId]: markMessageFailed(
+            prev[chatId] ?? [],
+            message.id,
+            failureText(error, 'Не удалось отправить сообщение'),
+          ),
         }));
       }
     },
@@ -523,6 +617,7 @@ export function useMessenger(
     closeChat,
     startChat,
     sendMessage,
+    sendImage,
     retryMessage,
     loadOlder,
     reload,

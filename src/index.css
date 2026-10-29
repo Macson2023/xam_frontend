@@ -1267,6 +1267,68 @@ button {
   overflow-wrap: anywhere;
 }
 
+.message__bubble--image {
+  padding: 4px;
+}
+
+.message__bubble--image .message__content {
+  padding: 4px 9px 2px;
+}
+
+.message__bubble--image .message__meta {
+  padding: 2px 9px 4px;
+}
+
+.message__image-button {
+  position: relative;
+  display: block;
+  max-width: 100%;
+  padding: 0;
+  border: 0;
+  border-radius: 12px;
+  background: rgba(2, 6, 15, 0.35);
+  line-height: 0;
+  cursor: zoom-in;
+  overflow: hidden;
+}
+
+.message__image {
+  display: block;
+  max-width: min(340px, 100%);
+  max-height: 340px;
+  width: auto;
+  height: auto;
+  border-radius: 12px;
+  object-fit: cover;
+}
+
+.message__image-overlay {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  border-radius: 12px;
+  background: rgba(5, 9, 17, 0.48);
+}
+
+.message__image-placeholder {
+  padding: 20px 18px;
+  border-radius: 12px;
+  background: rgba(2, 6, 15, 0.35);
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.4;
+  text-align: center;
+}
+
+.message__error {
+  margin: 3px 3px 1px;
+  color: #ffd0d6;
+  font-size: 10.5px;
+  line-height: 1.35;
+  text-align: right;
+}
+
 .message__meta {
   display: flex;
   align-items: center;
@@ -1346,13 +1408,89 @@ button {
   padding: 10px 20px 14px;
   border-top: 1px solid var(--border);
   background: rgba(8, 13, 22, 0.7);
+  transition:
+    background 0.15s ease,
+    border-color 0.15s ease;
+}
+
+.composer-wrap.is-dragging {
+  border-top-color: rgba(109, 139, 255, 0.55);
+  background: rgba(109, 139, 255, 0.12);
+}
+
+.composer__file-input {
+  display: none;
+}
+
+.composer__attach {
+  width: 40px;
+  height: 40px;
+  flex-shrink: 0;
+}
+
+.composer__attachment {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+  padding: 7px 8px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: rgba(17, 26, 41, 0.92);
+}
+
+.composer__attachment-thumb {
+  width: 46px;
+  height: 46px;
+  border-radius: 9px;
+  background: rgba(2, 6, 15, 0.4);
+  object-fit: cover;
+  flex-shrink: 0;
+}
+
+.composer__attachment-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  flex: 1;
+}
+
+.composer__attachment-name {
+  overflow: hidden;
+  color: var(--text);
+  font-size: 12.5px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.composer__attachment-size {
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.composer__attachment-remove {
+  width: 30px;
+  height: 30px;
+  flex-shrink: 0;
+}
+
+.composer__error {
+  margin-bottom: 8px;
+  padding: 6px 10px;
+  border: 1px solid rgba(255, 107, 129, 0.25);
+  border-radius: 10px;
+  background: rgba(255, 107, 129, 0.12);
+  color: #ffb0bc;
+  font-size: 11.5px;
+  line-height: 1.35;
 }
 
 .composer {
   display: flex;
   align-items: flex-end;
   gap: 10px;
-  padding: 7px 8px 7px 14px;
+  padding: 7px 8px;
   border-radius: 18px;
   border: 1px solid var(--border);
   background: rgba(17, 26, 41, 0.92);
@@ -1447,6 +1585,52 @@ button {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+/* ---------- lightbox ---------- */
+
+.lightbox {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: rgba(2, 5, 12, 0.9);
+  backdrop-filter: blur(6px);
+  cursor: zoom-out;
+  animation: banner-in 0.18s ease;
+}
+
+.lightbox__image {
+  max-width: min(100%, 1280px);
+  max-height: calc(100dvh - 48px);
+  border-radius: 12px;
+  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.65);
+  cursor: default;
+}
+
+.lightbox__close {
+  position: absolute;
+  top: max(16px, env(safe-area-inset-top));
+  right: 16px;
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 999px;
+  background: rgba(17, 26, 41, 0.85);
+  color: #fff;
+  cursor: pointer;
+  transition:
+    background 0.15s ease,
+    transform 0.15s ease;
+}
+
+.lightbox__close:hover {
+  background: rgba(255, 255, 255, 0.18);
+  transform: scale(1.04);
 }
 
 /* ---------- splash ---------- */
@@ -1659,6 +1843,18 @@ button {
 
   .message__content {
     font-size: 14px;
+  }
+
+  .message__image {
+    max-height: 260px;
+  }
+
+  .lightbox {
+    padding: 12px;
+  }
+
+  .lightbox__image {
+    max-height: calc(100dvh - 24px);
   }
 
   .composer-wrap {

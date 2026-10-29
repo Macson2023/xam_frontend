@@ -4,6 +4,16 @@ import { parseDate } from './format';
 export interface ChatMessage extends Message {
   pending?: boolean;
   failed?: boolean;
+  errorText?: string;
+  uploadFile?: File;
+  previewUrl?: string;
+}
+
+export function messagePreview(message: Message): string {
+  if (message.message_type === 'image') {
+    return message.content ? `Фото: ${message.content}` : 'Фото';
+  }
+  return message.content;
 }
 
 export function byCreatedAt(a: Message, b: Message): number {
@@ -37,7 +47,15 @@ export function mergeMessages(
     const index = byId !== -1 ? byId : byClient;
 
     if (index !== -1) {
-      next[index] = { ...next[index], ...message, pending: false, failed: false };
+      next[index] = {
+        ...next[index],
+        ...message,
+        pending: false,
+        failed: false,
+        errorText: undefined,
+        uploadFile: undefined,
+        previewUrl: undefined,
+      };
     } else {
       next.push(message);
     }
@@ -46,12 +64,20 @@ export function mergeMessages(
   return sortMessages(next);
 }
 
-export function markMessageFailed(list: ChatMessage[], id: string): ChatMessage[] {
-  return list.map((item) => (item.id === id ? { ...item, pending: false, failed: true } : item));
+export function markMessageFailed(
+  list: ChatMessage[],
+  id: string,
+  errorText?: string,
+): ChatMessage[] {
+  return list.map((item) =>
+    item.id === id ? { ...item, pending: false, failed: true, errorText } : item,
+  );
 }
 
 export function markMessagePending(list: ChatMessage[], id: string): ChatMessage[] {
-  return list.map((item) => (item.id === id ? { ...item, pending: true, failed: false } : item));
+  return list.map((item) =>
+    item.id === id ? { ...item, pending: true, failed: false, errorText: undefined } : item,
+  );
 }
 
 export function removeMessage(list: ChatMessage[], id: string): ChatMessage[] {

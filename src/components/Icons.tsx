@@ -35,6 +35,14 @@ export function SendIcon(props: IconProps) {
   );
 }
 
+export function AttachIcon(props: IconProps) {
+  return (
+    <svg {...base(props)}>
+      <path d="M20.5 11.5 12 20a5.5 5.5 0 0 1-7.8-7.8l8.6-8.6a3.7 3.7 0 0 1 5.2 5.2l-8.6 8.6a1.9 1.9 0 0 1-2.6-2.6l7.8-7.8" />
+    </svg>
+  );
+}
+
 export function LogoutIcon(props: IconProps) {
   return (
     <svg {...base(props)}>

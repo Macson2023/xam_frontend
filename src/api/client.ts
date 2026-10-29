@@ -30,7 +30,8 @@ interface RequestOptions {
 
 async function request<T>(path: string, options: RequestOptions = {}): Promise<T> {
   const headers = new Headers();
-  if (options.body !== undefined) {
+  const isFormData = options.body instanceof FormData;
+  if (options.body !== undefined && !isFormData) {
     headers.set('Content-Type', 'application/json');
   }
   if (options.token) {
@@ -42,7 +43,12 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
     response = await fetch(`${API_ORIGIN}${API_PREFIX}${path}`, {
       method: options.method ?? 'GET',
       headers,
-      body: options.body === undefined ? undefined : JSON.stringify(options.body),
+      body:
+        options.body === undefined
+          ? undefined
+          : isFormData
+            ? (options.body as FormData)
+            : JSON.stringify(options.body),
       signal: options.signal,
     });
   } catch (error) {
@@ -123,6 +129,36 @@ export function sendMessage(
     token,
     body: payload,
   });
+}
+
+export function sendImage(
+  chatId: string,
+  payload: { file: File; caption: string; client_message_id: string },
+  token: string,
+): Promise<Message> {
+  const form = new FormData();
+  form.append('file', payload.file, payload.file.name);
+  const caption = payload.caption.trim();
+  if (caption) {
+    form.append('caption', caption);
+  }
+  form.append('client_message_id', payload.client_message_id);
+  return request<Message>(`/chats/${chatId}/images`, {
+    method: 'POST',
+    token,
+    body: form,
+  });
+}
+
+export function resolveMediaUrl(url: string | null | undefined): string | null {
+  if (!url) {
+    return null;
+  }
+  if (/^(?:[a-z]+:)?\/\//i.test(url) || url.startsWith('data:') || url.startsWith('blob:')) {
+    return url;
+  }
+  const suffix = url.startsWith('/') ? url : `/${url}`;
+  return `${API_ORIGIN}${suffix}`;
 }
 
 export function markChatRead(chatId: string, token: string): Promise<{ updated: number }> {

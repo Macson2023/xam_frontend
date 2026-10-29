@@ -1,5 +1,6 @@
 import type { Chat } from '../api/types';
 import { formatChatTime } from '../lib/format';
+import { messagePreview } from '../lib/messages';
 import { Avatar } from './Avatar';
 
 interface ChatListItemProps {
@@ -24,7 +25,7 @@ export function ChatListItem({
   const preview = typing
     ? 'печатает…'
     : last
-      ? `${isOwnLast ? 'Вы: ' : ''}${last.content}`
+      ? `${isOwnLast ? 'Вы: ' : ''}${messagePreview(last)}`
       : 'Нет сообщений — напишите первым';
 
   return (

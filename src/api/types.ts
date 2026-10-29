@@ -7,11 +7,17 @@ export interface User {
   last_seen: string | null;
 }
 
+export type MessageType = 'text' | 'image';
+
 export interface Message {
   id: string;
   chat_id: string;
   sender_id: string;
   content: string;
+  message_type: MessageType;
+  image_url: string | null;
+  image_mime_type: string | null;
+  image_size_bytes: number | null;
   client_message_id: string | null;
   created_at: string;
   is_read: boolean;

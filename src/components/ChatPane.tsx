@@ -17,6 +17,7 @@ interface ChatPaneProps {
   online: boolean;
   typing: boolean;
   onSend: (content: string) => void;
+  onSendImage: (file: File, caption: string) => void;
   onRetry: (message: ChatMessage) => void;
   onLoadOlder: () => Promise<void>;
   onReload: () => Promise<void>;
@@ -49,6 +50,7 @@ export function ChatPane({
   online,
   typing,
   onSend,
+  onSendImage,
   onRetry,
   onLoadOlder,
   onReload,
@@ -235,7 +237,7 @@ export function ChatPane({
         <div className="chat__inline-error">{error}</div>
       ) : null}
 
-      <Composer onSend={onSend} onTyping={onTyping} />
+      <Composer onSend={onSend} onSendImage={onSendImage} onTyping={onTyping} />
     </section>
   );
 }

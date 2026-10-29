@@ -59,6 +59,7 @@ export function MessengerPage({ token, user }: MessengerPageProps) {
             online={messenger.online[activeChat.partner.id] === true}
             typing={messenger.typing[activeChat.id] === true}
             onSend={(content) => void messenger.sendMessage(content)}
+            onSendImage={(file, caption) => void messenger.sendImage(file, caption)}
             onRetry={(message) => void messenger.retryMessage(message)}
             onLoadOlder={messenger.loadOlder}
             onReload={messenger.reload}
