@@ -1,21 +1,47 @@
-import { useEffect, useLayoutEffect, useRef } from 'react';
-import type { Chat, User } from '../api/types';
+import { useEffect, useLayoutEffect, useMemo, useRef } from 'react';
+import type { Chat, ChatDetail, User } from '../api/types';
+import {
+  chatAvatar,
+  chatKindLabel,
+  chatTitle,
+  memberCountLabel,
+  roleLabel,
+} from '../lib/chat';
 import { dayKey, formatDayLabel, formatLastSeen, parseDate } from '../lib/format';
 import type { ChatMessage } from '../lib/messages';
 import { Avatar } from './Avatar';
 import { Composer } from './Composer';
-import { BackIcon } from './Icons';
+import {
+  BackIcon,
+  LockIcon,
+  MegaphoneIcon,
+  PhoneIcon,
+  SettingsIcon,
+  UsersIcon,
+  VideoIcon,
+} from './Icons';
 import { MessageBubble } from './MessageBubble';
 
 interface ChatPaneProps {
   chat: Chat;
+  detail: ChatDetail | null;
   currentUser: User;
   messages: ChatMessage[];
   loading: boolean;
   error: string | null;
   hasMore: boolean;
   online: boolean;
-  typing: boolean;
+  typingUsers: User[];
+  callsAvailable: boolean;
+  callBusy: boolean;
+  canSend: boolean;
+  needsSubscribe: boolean;
+  subscribeBusy: boolean;
+  subscribeError: string | null;
+  onSubscribe: () => void;
+  onOpenSettings: () => void;
+  onAudioCall: () => void;
+  onVideoCall: () => void;
   onSend: (content: string) => void;
   onSendImage: (file: File, caption: string) => void;
   onRetry: (message: ChatMessage) => void;
@@ -25,11 +51,11 @@ interface ChatPaneProps {
   onBack: () => void;
 }
 
-function TypingBubble({ partner }: { partner: User }) {
+function TypingBubble({ user }: { user: User }) {
   return (
     <div className="message message--other message--typing">
       <div className="message__avatar">
-        <Avatar user={partner} size={32} />
+        <Avatar user={user} size={32} />
       </div>
       <div className="message__bubble typing-bubble" aria-label="Собеседник печатает">
         <span />
@@ -40,15 +66,39 @@ function TypingBubble({ partner }: { partner: User }) {
   );
 }
 
+function typingLabel(users: User[]): string {
+  if (users.length === 0) {
+    return '';
+  }
+  if (users.length === 1) {
+    return `${users[0].display_name} печатает…`;
+  }
+  if (users.length === 2) {
+    return `${users[0].display_name} и ${users[1].display_name} печатают…`;
+  }
+  return `${users[0].display_name} и ещё ${users.length - 1} печатают…`;
+}
+
 export function ChatPane({
   chat,
+  detail,
   currentUser,
   messages,
   loading,
   error,
   hasMore,
   online,
-  typing,
+  typingUsers,
+  callsAvailable,
+  callBusy,
+  canSend,
+  needsSubscribe,
+  subscribeBusy,
+  subscribeError,
+  onSubscribe,
+  onOpenSettings,
+  onAudioCall,
+  onVideoCall,
   onSend,
   onSendImage,
   onRetry,
@@ -61,6 +111,40 @@ export function ChatPane({
   const prevCountRef = useRef(0);
   const stickRef = useRef(true);
   const restoreRef = useRef<{ height: number; top: number } | null>(null);
+
+  const isDirect = chat.type === 'direct';
+  const partner = chat.partner;
+  const membersById = useMemo(() => {
+    const map = new Map<string, User>();
+    if (detail) {
+      for (const member of detail.members) {
+        map.set(member.user.id, member.user);
+      }
+    }
+    if (partner) {
+      map.set(partner.id, partner);
+    }
+    return map;
+  }, [detail, partner]);
+
+  const fallbackSender = useMemo<User>(
+    () => ({
+      id: 'unknown',
+      username: '',
+      display_name: 'Участник',
+      avatar_url: null,
+      created_at: '',
+      last_seen: null,
+    }),
+    [],
+  );
+
+  const senderFor = (message: ChatMessage): User => {
+    if (message.sender_id === currentUser.id) {
+      return currentUser;
+    }
+    return membersById.get(message.sender_id) ?? fallbackSender;
+  };
 
   useEffect(() => {
     prevCountRef.current = 0;
@@ -117,12 +201,28 @@ export function ChatPane({
     void onLoadOlder();
   };
 
-  const partnerOnline = online;
-  const statusText = typing
+  const typing = typingUsers.length > 0;
+  const typingText = typingLabel(typingUsers);
+  const directStatus = typing
     ? 'печатает…'
-    : partnerOnline
+    : online
       ? 'в сети'
-      : formatLastSeen(chat.partner.last_seen);
+      : partner
+        ? formatLastSeen(partner.last_seen)
+        : '';
+  const communityStatus = typing
+    ? typingText
+    : `${memberCountLabel(chat.member_count)} · ${chatKindLabel(chat)}`;
+  const statusText = isDirect ? directStatus : communityStatus;
+  const statusClass = typing ? ' is-typing' : isDirect && online ? ' is-online' : '';
+  const callDisabled = !callsAvailable || callBusy;
+  const callHint = !callsAvailable
+    ? 'Сервис звонков недоступен'
+    : callBusy
+      ? 'Уже идёт звонок'
+      : 'Позвонить';
+  const emptyTitle = chatTitle(chat);
+  const avatarShape = isDirect ? 'circle' : 'rounded';
 
   return (
     <section className="chat">
@@ -131,24 +231,70 @@ export function ChatPane({
           type="button"
           className="icon-button chat__back"
           onClick={onBack}
-          aria-label="Назад к диалогам"
+          aria-label="Назад к чатам"
         >
           <BackIcon width={22} height={22} />
         </button>
         <Avatar
-          user={chat.partner}
+          user={chatAvatar(chat)}
           size={42}
-          status={partnerOnline ? 'online' : undefined}
+          shape={avatarShape}
+          status={isDirect && online ? 'online' : undefined}
         />
         <div className="chat__title">
-          <span className="chat__name">{chat.partner.display_name}</span>
-          <span
-            className={`chat__status${typing ? ' is-typing' : ''}${partnerOnline ? ' is-online' : ''}`}
-          >
-            {statusText}
-          </span>
+          <span className="chat__name">{emptyTitle}</span>
+          <span className={`chat__status${statusClass}`}>{statusText}</span>
         </div>
-        <span className="chat__username">@{chat.partner.username}</span>
+        {isDirect && partner ? (
+          <span className="chat__username">@{partner.username}</span>
+        ) : (
+          <span className="chat__username chat__username--kind">
+            {chat.type === 'group' ? (
+              <UsersIcon width={14} height={14} />
+            ) : chat.is_public ? (
+              <MegaphoneIcon width={14} height={14} />
+            ) : (
+              <LockIcon width={14} height={14} />
+            )}
+            {chat.my_role ? roleLabel(chat.my_role) : 'Без подписки'}
+          </span>
+        )}
+        <div className="chat__actions">
+          {isDirect ? (
+            <>
+              <button
+                type="button"
+                className="icon-button"
+                onClick={onAudioCall}
+                disabled={callDisabled}
+                title={callHint}
+                aria-label="Аудиозвонок"
+              >
+                <PhoneIcon width={19} height={19} />
+              </button>
+              <button
+                type="button"
+                className="icon-button"
+                onClick={onVideoCall}
+                disabled={callDisabled}
+                title={callHint}
+                aria-label="Видеозвонок"
+              >
+                <VideoIcon width={20} height={20} />
+              </button>
+            </>
+          ) : chat.my_role !== null ? (
+            <button
+              type="button"
+              className="icon-button"
+              onClick={onOpenSettings}
+              title="Настройки"
+              aria-label="Настройки чата"
+            >
+              <SettingsIcon width={19} height={19} />
+            </button>
+          ) : null}
+        </div>
       </header>
 
       <div className="chat__body" ref={scrollRef} onScroll={handleScroll}>
@@ -187,11 +333,47 @@ export function ChatPane({
             </div>
           ) : null}
 
-          {!loading && !error && messages.length === 0 ? (
+          {needsSubscribe ? (
+            <div className="chat__subscribe">
+              <span className="chat__subscribe-icon">
+                <MegaphoneIcon width={26} height={26} />
+              </span>
+              <strong>Подпишитесь на канал</strong>
+              <span>
+                Читать сообщения и получать обновления могут подписчики. Это публичный канал —
+                подписка доступна в один клик.
+              </span>
+              {subscribeError ? (
+                <span className="chat__subscribe-error" role="alert">
+                  {subscribeError}
+                </span>
+              ) : null}
+              <button
+                type="button"
+                className="button button--primary"
+                onClick={onSubscribe}
+                disabled={subscribeBusy}
+              >
+                {subscribeBusy ? <span className="spinner spinner--small" /> : null}
+                Подписаться
+              </button>
+            </div>
+          ) : null}
+
+          {!needsSubscribe && !loading && !error && messages.length === 0 ? (
             <div className="chat__start">
-              <Avatar user={chat.partner} size={56} />
-              <strong>{chat.partner.display_name}</strong>
-              <span>Это начало вашего диалога. Напишите первое сообщение.</span>
+              <Avatar user={chatAvatar(chat)} size={56} shape={avatarShape} />
+              <strong>{emptyTitle}</strong>
+              <span>
+                {isDirect
+                  ? 'Это начало вашего диалога. Напишите первое сообщение.'
+                  : chat.type === 'group'
+                    ? 'Это начало истории группы. Напишите первое сообщение.'
+                    : 'В канале пока нет сообщений.'}
+              </span>
+              {!isDirect && chat.description ? (
+                <span className="chat__start-description">{chat.description}</span>
+              ) : null}
             </div>
           ) : null}
 
@@ -219,9 +401,10 @@ export function ChatPane({
                 ) : null}
                 <MessageBubble
                   message={message}
-                  partner={chat.partner}
+                  sender={senderFor(message)}
                   isOwn={isOwn}
                   showAvatar={showAvatar}
+                  showAuthor={!isDirect}
                   grouped={grouped}
                   onRetry={onRetry}
                 />
@@ -229,7 +412,7 @@ export function ChatPane({
             );
           })}
 
-          {typing ? <TypingBubble partner={chat.partner} /> : null}
+          {typing && typingUsers[0] ? <TypingBubble user={typingUsers[0]} /> : null}
         </div>
       </div>
 
@@ -237,7 +420,32 @@ export function ChatPane({
         <div className="chat__inline-error">{error}</div>
       ) : null}
 
-      <Composer onSend={onSend} onSendImage={onSendImage} onTyping={onTyping} />
+      {needsSubscribe ? (
+        <div className="chat__readonly">
+          <LockIcon width={17} height={17} />
+          <span>Подпишитесь, чтобы читать сообщения и получать обновления канала.</span>
+          <button
+            type="button"
+            className="button button--primary"
+            onClick={onSubscribe}
+            disabled={subscribeBusy}
+          >
+            {subscribeBusy ? <span className="spinner spinner--small" /> : null}
+            Подписаться
+          </button>
+        </div>
+      ) : canSend ? (
+        <Composer onSend={onSend} onSendImage={onSendImage} onTyping={onTyping} />
+      ) : (
+        <div className="chat__readonly">
+          <LockIcon width={17} height={17} />
+          <span>
+            {chat.type === 'channel'
+              ? 'Писать в канале могут только владелец и администраторы.'
+              : 'Отправка сообщений недоступна.'}
+          </span>
+        </div>
+      )}
     </section>
   );
 }

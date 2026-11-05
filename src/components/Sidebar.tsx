@@ -1,7 +1,7 @@
 import type { Chat, ConnectionStatus, User } from '../api/types';
 import { Avatar } from './Avatar';
 import { ChatListItem } from './ChatListItem';
-import { ChatIcon, LogoutIcon } from './Icons';
+import { ChatIcon, LogoutIcon, MegaphoneIcon, PlusIcon, UsersIcon } from './Icons';
 import { Logo } from './Logo';
 import { UserSearch } from './UserSearch';
 
@@ -17,6 +17,9 @@ interface SidebarProps {
   connection: ConnectionStatus;
   onSelectChat: (chatId: string) => void;
   onStartChat: (user: User) => Promise<void>;
+  onCreateGroup: () => void;
+  onCreateChannel: () => void;
+  onOpenChannel: () => void;
   onLogout: () => void;
   onUnauthorized: () => void;
   onRetry: () => void;
@@ -41,6 +44,9 @@ export function Sidebar({
   connection,
   onSelectChat,
   onStartChat,
+  onCreateGroup,
+  onCreateChannel,
+  onOpenChannel,
   onLogout,
   onUnauthorized,
   onRetry,
@@ -87,8 +93,28 @@ export function Sidebar({
         onUnauthorized={onUnauthorized}
       />
 
+      <div className="sidebar__actions">
+        <button type="button" className="sidebar__action" onClick={onCreateGroup}>
+          <UsersIcon width={16} height={16} />
+          Группа
+        </button>
+        <button type="button" className="sidebar__action" onClick={onCreateChannel}>
+          <MegaphoneIcon width={16} height={16} />
+          Канал
+        </button>
+        <button
+          type="button"
+          className="sidebar__action sidebar__action--icon"
+          onClick={onOpenChannel}
+          title="Открыть канал по ID"
+          aria-label="Открыть канал по ID"
+        >
+          <PlusIcon width={16} height={16} />
+        </button>
+      </div>
+
       <div className="sidebar__list-head">
-        <span>Диалоги</span>
+        <span>Чаты</span>
         {totalUnread > 0 ? <span className="sidebar__unread">{totalUnread}</span> : null}
       </div>
 
@@ -96,7 +122,7 @@ export function Sidebar({
         {loading ? (
           <div className="sidebar__state">
             <span className="spinner" />
-            <span>Загружаем диалоги…</span>
+            <span>Загружаем чаты…</span>
           </div>
         ) : null}
 
@@ -114,8 +140,8 @@ export function Sidebar({
             <span className="sidebar__empty-icon">
               <ChatIcon width={26} height={26} />
             </span>
-            <strong>Пока нет диалогов</strong>
-            <span>Найдите собеседника по username — диалог появится здесь.</span>
+            <strong>Пока нет чатов</strong>
+            <span>Найдите пользователя по username или создайте группу либо канал.</span>
           </div>
         ) : null}
 
@@ -126,7 +152,11 @@ export function Sidebar({
                 chat={chat}
                 currentUserId={user.id}
                 active={chat.id === activeChatId}
-                online={online[chat.partner.id] === true}
+                online={
+                  chat.type === 'direct' && chat.partner
+                    ? online[chat.partner.id] === true
+                    : false
+                }
                 typing={typing[chat.id] === true}
                 onSelect={() => onSelectChat(chat.id)}
               />

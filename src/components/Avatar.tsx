@@ -1,9 +1,11 @@
-import type { User } from '../api/types';
+import { resolveMediaUrl } from '../api/client';
+import type { AvatarSource } from '../lib/chat';
 
 interface AvatarProps {
-  user: User;
+  user: AvatarSource;
   size?: number;
   status?: 'online' | 'offline';
+  shape?: 'circle' | 'rounded';
 }
 
 function initials(name: string): string {
@@ -25,21 +27,34 @@ function hash(value: string): number {
   return result;
 }
 
-export function Avatar({ user, size = 44, status }: AvatarProps) {
-  const hue = hash(user.id || user.username);
+export function Avatar({ user, size = 44, status, shape = 'circle' }: AvatarProps) {
+  const seed = user.id || user.username || user.display_name || '?';
+  const hue = hash(seed);
   const background = `linear-gradient(135deg, hsl(${hue} 68% 56%), hsl(${(hue + 48) % 360} 72% 42%))`;
+  const label = user.display_name || user.username || '?';
+  const image = resolveMediaUrl(user.avatar_url);
 
   return (
     <span
-      className="avatar"
-      style={{ width: size, height: size, background: user.avatar_url ? undefined : background }}
-      title={user.display_name}
+      className={`avatar${shape === 'rounded' ? ' avatar--rounded' : ''}`}
+      style={{
+        width: size,
+        height: size,
+        background: image ? undefined : background,
+        borderRadius: shape === 'rounded' ? Math.max(10, size * 0.28) : undefined,
+      }}
+      title={label}
     >
-      {user.avatar_url ? (
-        <img className="avatar__image" src={user.avatar_url} alt={user.display_name} />
+      {image ? (
+        <img
+          className={`avatar__image${shape === 'rounded' ? ' avatar__image--rounded' : ''}`}
+          src={image}
+          alt={label}
+          style={{ borderRadius: shape === 'rounded' ? Math.max(10, size * 0.28) : undefined }}
+        />
       ) : (
         <span className="avatar__initials" style={{ fontSize: Math.max(11, size * 0.36) }}>
-          {initials(user.display_name || user.username)}
+          {initials(label)}
         </span>
       )}
       {status ? <span className={`avatar__status avatar__status--${status}`} /> : null}

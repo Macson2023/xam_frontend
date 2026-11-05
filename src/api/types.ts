@@ -8,6 +8,8 @@ export interface User {
 }
 
 export type MessageType = 'text' | 'image';
+export type ChatType = 'direct' | 'group' | 'channel';
+export type MemberRole = 'owner' | 'admin' | 'member';
 
 export interface Message {
   id: string;
@@ -25,11 +27,30 @@ export interface Message {
 
 export interface Chat {
   id: string;
-  partner: User;
+  type: ChatType;
+  partner: User | null;
+  title: string | null;
+  description: string | null;
+  avatar_url: string | null;
+  owner_id: string | null;
+  is_public: boolean;
+  member_count: number;
+  my_role: MemberRole | null;
   created_at: string;
   last_activity: string;
   unread_count: number;
   last_message: Message | null;
+}
+
+export interface ChatMember {
+  user: User;
+  role: MemberRole;
+  joined_at: string;
+  last_read_at: string | null;
+}
+
+export interface ChatDetail extends Chat {
+  members: ChatMember[];
 }
 
 export interface TokenResponse {
@@ -53,6 +74,32 @@ export interface RegisterPayload {
 export interface LoginPayload {
   username: string;
   password: string;
+}
+
+export interface CreateCommunityPayload {
+  title: string;
+  description?: string | null;
+  avatar_url?: string | null;
+  member_ids?: string[];
+}
+
+export interface CreateChannelPayload extends CreateCommunityPayload {
+  is_public?: boolean;
+}
+
+export interface UpdateCommunityPayload {
+  title?: string;
+  description?: string | null;
+  avatar_url?: string | null;
+}
+
+export interface UpdateChannelPayload extends UpdateCommunityPayload {
+  is_public?: boolean;
+}
+
+export interface AddMembersPayload {
+  user_ids: string[];
+  role?: 'admin' | 'member';
 }
 
 export type ConnectionStatus = 'connecting' | 'online' | 'reconnecting' | 'offline';

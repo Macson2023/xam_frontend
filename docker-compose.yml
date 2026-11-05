@@ -6,12 +6,21 @@ services:
       args:
         VITE_API_URL: ${VITE_API_URL:-}
         VITE_WS_URL: ${VITE_WS_URL:-}
+        VITE_CALLS_URL: ${VITE_CALLS_URL:-}
     image: xam_frontend:latest
     container_name: xam_frontend
     environment:
       BACKEND_ORIGIN: ${BACKEND_ORIGIN:-http://host.docker.internal:8000}
+      CALLS_ORIGIN: ${CALLS_ORIGIN:-http://host.docker.internal:8081}
+      TLS_HOSTS: ${TLS_HOSTS:-localhost,127.0.0.1}
+      TLS_CN: ${TLS_CN:-localhost}
+      TLS_CERT_DAYS: ${TLS_CERT_DAYS:-825}
+      TLS_REGENERATE: ${TLS_REGENERATE:-0}
     ports:
       - "${FRONTEND_PORT:-8080}:80"
+      - "${FRONTEND_TLS_PORT:-8444}:443"
+    volumes:
+      - frontend_tls_certs:/etc/nginx/certs
     extra_hosts:
       - "host.docker.internal:host-gateway"
     restart: unless-stopped
@@ -21,3 +30,6 @@ services:
       timeout: 3s
       retries: 3
       start_period: 5s
+
+volumes:
+  frontend_tls_certs:

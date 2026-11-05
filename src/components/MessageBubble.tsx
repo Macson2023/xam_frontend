@@ -9,18 +9,20 @@ import { ImageLightbox } from './ImageLightbox';
 
 interface MessageBubbleProps {
   message: ChatMessage;
-  partner: User;
+  sender: User;
   isOwn: boolean;
   showAvatar: boolean;
+  showAuthor?: boolean;
   grouped: boolean;
   onRetry: (message: ChatMessage) => void;
 }
 
 export function MessageBubble({
   message,
-  partner,
+  sender,
   isOwn,
   showAvatar,
+  showAuthor = false,
   grouped,
   onRetry,
 }: MessageBubbleProps) {
@@ -41,11 +43,15 @@ export function MessageBubble({
     >
       {!isOwn ? (
         <div className="message__avatar">
-          {showAvatar ? <Avatar user={partner} size={32} /> : null}
+          {showAvatar ? <Avatar user={sender} size={32} /> : null}
         </div>
       ) : null}
 
       <div className={`message__bubble${isImage ? ' message__bubble--image' : ''}`}>
+        {showAuthor && !isOwn && !grouped ? (
+          <span className="message__author">{sender.display_name}</span>
+        ) : null}
+
         {isImage ? (
           imageSrc ? (
             <button

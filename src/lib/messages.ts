@@ -40,8 +40,9 @@ export function mergeMessages(
     const byClient = message.client_message_id
       ? next.findIndex(
           (item) =>
-            item.client_message_id === message.client_message_id &&
-            item.sender_id === message.sender_id,
+            item.chat_id === message.chat_id &&
+            item.sender_id === message.sender_id &&
+            item.client_message_id === message.client_message_id,
         )
       : -1;
     const index = byId !== -1 ? byId : byClient;
