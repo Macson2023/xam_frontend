@@ -44,6 +44,8 @@ interface ChatPaneProps {
   onVideoCall: () => void;
   onSend: (content: string) => void;
   onSendImage: (file: File, caption: string) => void;
+  onSendAudio: (file: File, durationSeconds: number) => void;
+  onSendVideoNote: (file: File, durationSeconds: number) => void;
   onRetry: (message: ChatMessage) => void;
   onLoadOlder: () => Promise<void>;
   onReload: () => Promise<void>;
@@ -101,6 +103,8 @@ export function ChatPane({
   onVideoCall,
   onSend,
   onSendImage,
+  onSendAudio,
+  onSendVideoNote,
   onRetry,
   onLoadOlder,
   onReload,
@@ -435,7 +439,13 @@ export function ChatPane({
           </button>
         </div>
       ) : canSend ? (
-        <Composer onSend={onSend} onSendImage={onSendImage} onTyping={onTyping} />
+        <Composer
+          onSend={onSend}
+          onSendImage={onSendImage}
+          onSendAudio={onSendAudio}
+          onSendVideoNote={onSendVideoNote}
+          onTyping={onTyping}
+        />
       ) : (
         <div className="chat__readonly">
           <LockIcon width={17} height={17} />

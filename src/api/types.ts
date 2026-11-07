@@ -7,7 +7,7 @@ export interface User {
   last_seen: string | null;
 }
 
-export type MessageType = 'text' | 'image';
+export type MessageType = 'text' | 'image' | 'audio' | 'video_note';
 export type ChatType = 'direct' | 'group' | 'channel';
 export type MemberRole = 'owner' | 'admin' | 'member';
 
@@ -20,6 +20,10 @@ export interface Message {
   image_url: string | null;
   image_mime_type: string | null;
   image_size_bytes: number | null;
+  media_url: string | null;
+  media_mime_type: string | null;
+  media_size_bytes: number | null;
+  media_duration_seconds: number | null;
   client_message_id: string | null;
   created_at: string;
   is_read: boolean;

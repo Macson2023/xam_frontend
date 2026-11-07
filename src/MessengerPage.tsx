@@ -149,6 +149,12 @@ export function MessengerPage({ token, user }: MessengerPageProps) {
             }}
             onSend={(content) => void messenger.sendMessage(content)}
             onSendImage={(file, caption) => void messenger.sendImage(file, caption)}
+            onSendAudio={(file, durationSeconds) =>
+              void messenger.sendAudio(file, durationSeconds)
+            }
+            onSendVideoNote={(file, durationSeconds) =>
+              void messenger.sendVideoNote(file, durationSeconds)
+            }
             onRetry={(message) => void messenger.retryMessage(message)}
             onLoadOlder={messenger.loadOlder}
             onReload={messenger.reload}

@@ -165,6 +165,49 @@ export function VideoIcon(props: IconProps) {
   );
 }
 
+export function VideoNoteIcon(props: IconProps) {
+  return (
+    <svg {...base(props)}>
+      <circle cx="12" cy="12" r="9" />
+      <circle cx="12" cy="12" r="3.2" fill="currentColor" stroke="none" />
+    </svg>
+  );
+}
+
+export function PlayIcon(props: IconProps) {
+  return (
+    <svg {...base(props)} fill="currentColor" stroke="none">
+      <path d="M8.5 5.2c0-.7.8-1.1 1.4-.7l9.2 6.3c.5.4.5 1.1 0 1.4l-9.2 6.3c-.6.4-1.4 0-1.4-.7V5.2Z" />
+    </svg>
+  );
+}
+
+export function PauseIcon(props: IconProps) {
+  return (
+    <svg {...base(props)}>
+      <path d="M9 5v14M15 5v14" strokeWidth={2.4} />
+    </svg>
+  );
+}
+
+export function VolumeIcon(props: IconProps) {
+  return (
+    <svg {...base(props)}>
+      <path d="M11 5.5 6.5 9H3.5v6h3L11 18.5v-13Z" />
+      <path d="M15 8.5a5 5 0 0 1 0 7M17.8 6a9 9 0 0 1 0 12" />
+    </svg>
+  );
+}
+
+export function VolumeOffIcon(props: IconProps) {
+  return (
+    <svg {...base(props)}>
+      <path d="M11 5.5 6.5 9H3.5v6h3L11 18.5v-13Z" />
+      <path d="m16 9 5 5M21 9l-5 5" />
+    </svg>
+  );
+}
+
 export function VideoOffIcon(props: IconProps) {
   return (
     <svg {...base(props)}>

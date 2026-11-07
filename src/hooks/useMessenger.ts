@@ -13,6 +13,7 @@ import type {
   User,
 } from '../api/types';
 import { canPost, canRead, needsSubscription } from '../lib/chat';
+import type { MediaKind } from '../lib/media';
 import {
   markMessageFailed,
   markMessagePending,
@@ -63,6 +64,8 @@ export interface MessengerState {
   createChannel: (payload: CreateChannelPayload) => Promise<Chat>;
   sendMessage: (content: string) => Promise<void>;
   sendImage: (file: File, caption: string) => Promise<void>;
+  sendAudio: (file: File, durationSeconds: number) => Promise<void>;
+  sendVideoNote: (file: File, durationSeconds: number) => Promise<void>;
   retryMessage: (message: ChatMessage) => Promise<void>;
   loadOlder: () => Promise<void>;
   reload: () => Promise<void>;
@@ -492,6 +495,10 @@ export function useMessenger(
         image_url: null,
         image_mime_type: null,
         image_size_bytes: null,
+        media_url: null,
+        media_mime_type: null,
+        media_size_bytes: null,
+        media_duration_seconds: null,
         client_message_id: clientMessageId,
         created_at: new Date().toISOString(),
         is_read: false,
@@ -552,6 +559,10 @@ export function useMessenger(
         image_url: null,
         image_mime_type: file.type || null,
         image_size_bytes: file.size,
+        media_url: null,
+        media_mime_type: null,
+        media_size_bytes: null,
+        media_duration_seconds: null,
         client_message_id: clientMessageId,
         created_at: new Date().toISOString(),
         is_read: false,
@@ -598,6 +609,96 @@ export function useMessenger(
     [token, user.id, onUnauthorized, touchChat, resolveChat],
   );
 
+  const sendMedia = useCallback(
+    async (kind: MediaKind, file: File, durationSeconds: number) => {
+      const chat = resolveChat(activeChatIdRef.current);
+      if (!chat || !canPost(chat)) {
+        return;
+      }
+      const clientMessageId = createUuid();
+      const previewUrl = URL.createObjectURL(file);
+      const optimistic: ChatMessage = {
+        id: clientMessageId,
+        chat_id: chat.id,
+        sender_id: user.id,
+        content: '',
+        message_type: kind,
+        image_url: null,
+        image_mime_type: null,
+        image_size_bytes: null,
+        media_url: null,
+        media_mime_type: file.type || null,
+        media_size_bytes: file.size,
+        media_duration_seconds: durationSeconds,
+        client_message_id: clientMessageId,
+        created_at: new Date().toISOString(),
+        is_read: false,
+        pending: true,
+        uploadFile: file,
+        previewUrl,
+      };
+
+      setMessagesByChat((prev) => ({
+        ...prev,
+        [chat.id]: mergeMessages(prev[chat.id] ?? [], optimistic),
+      }));
+      touchChat(chat.id, optimistic);
+
+      try {
+        const saved =
+          kind === 'audio'
+            ? await api.sendAudio(
+                chat.type,
+                chat.id,
+                { file, durationSeconds, client_message_id: clientMessageId },
+                token,
+              )
+            : await api.sendVideoNote(
+                chat.type,
+                chat.id,
+                { file, durationSeconds, client_message_id: clientMessageId },
+                token,
+              );
+        URL.revokeObjectURL(previewUrl);
+        setMessagesByChat((prev) => ({
+          ...prev,
+          [chat.id]: mergeMessages(prev[chat.id] ?? [], saved),
+        }));
+        touchChat(chat.id, saved);
+      } catch (error) {
+        if (isUnauthorized(error)) {
+          URL.revokeObjectURL(previewUrl);
+          onUnauthorized();
+          return;
+        }
+        setMessagesByChat((prev) => ({
+          ...prev,
+          [chat.id]: markMessageFailed(
+            prev[chat.id] ?? [],
+            clientMessageId,
+            failureText(
+              error,
+              kind === 'audio'
+                ? 'Не удалось отправить аудиосообщение'
+                : 'Не удалось отправить видеокружок',
+            ),
+          ),
+        }));
+      }
+    },
+    [token, user.id, onUnauthorized, touchChat, resolveChat],
+  );
+
+  const sendAudio = useCallback(
+    (file: File, durationSeconds: number) => sendMedia('audio', file, durationSeconds),
+    [sendMedia],
+  );
+
+  const sendVideoNote = useCallback(
+    (file: File, durationSeconds: number) => sendMedia('video_note', file, durationSeconds),
+    [sendMedia],
+  );
+
   const retryMessage = useCallback(
     async (message: ChatMessage) => {
       if (!message.client_message_id) {
@@ -612,24 +713,53 @@ export function useMessenger(
         [chat.id]: markMessagePending(prev[chat.id] ?? [], message.id),
       }));
       try {
-        const saved =
-          message.message_type === 'image' && message.uploadFile
-            ? await api.sendImage(
-                chat.type,
-                chat.id,
-                {
-                  file: message.uploadFile,
-                  caption: message.content,
-                  client_message_id: message.client_message_id,
-                },
-                token,
-              )
-            : await api.sendMessage(
-                chat.type,
-                chat.id,
-                { content: message.content, client_message_id: message.client_message_id },
-                token,
-              );
+        const mediaDuration = message.media_duration_seconds ?? 1;
+        let saved: Message;
+        if (
+          (message.message_type === 'audio' || message.message_type === 'video_note') &&
+          message.uploadFile
+        ) {
+          saved =
+            message.message_type === 'audio'
+              ? await api.sendAudio(
+                  chat.type,
+                  chat.id,
+                  {
+                    file: message.uploadFile,
+                    durationSeconds: mediaDuration,
+                    client_message_id: message.client_message_id,
+                  },
+                  token,
+                )
+              : await api.sendVideoNote(
+                  chat.type,
+                  chat.id,
+                  {
+                    file: message.uploadFile,
+                    durationSeconds: mediaDuration,
+                    client_message_id: message.client_message_id,
+                  },
+                  token,
+                );
+        } else if (message.message_type === 'image' && message.uploadFile) {
+          saved = await api.sendImage(
+            chat.type,
+            chat.id,
+            {
+              file: message.uploadFile,
+              caption: message.content,
+              client_message_id: message.client_message_id,
+            },
+            token,
+          );
+        } else {
+          saved = await api.sendMessage(
+            chat.type,
+            chat.id,
+            { content: message.content, client_message_id: message.client_message_id },
+            token,
+          );
+        }
         if (message.previewUrl) {
           URL.revokeObjectURL(message.previewUrl);
         }
@@ -1092,6 +1222,8 @@ export function useMessenger(
     createChannel,
     sendMessage,
     sendImage,
+    sendAudio,
+    sendVideoNote,
     retryMessage,
     loadOlder,
     reload,

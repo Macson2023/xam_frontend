@@ -1,5 +1,6 @@
 import type { Message } from '../api/types';
 import { parseDate } from './format';
+import { formatDuration } from './media';
 
 export interface ChatMessage extends Message {
   pending?: boolean;
@@ -12,6 +13,14 @@ export interface ChatMessage extends Message {
 export function messagePreview(message: Message): string {
   if (message.message_type === 'image') {
     return message.content ? `Фото: ${message.content}` : 'Фото';
+  }
+  if (message.message_type === 'audio') {
+    return message.media_duration_seconds
+      ? `Аудио · ${formatDuration(message.media_duration_seconds)}`
+      : 'Аудио';
+  }
+  if (message.message_type === 'video_note') {
+    return 'Видеокружок';
   }
   return message.content;
 }

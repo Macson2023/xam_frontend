@@ -181,6 +181,46 @@ export function sendImage(
   });
 }
 
+interface MediaUploadPayload {
+  file: File;
+  durationSeconds: number;
+  client_message_id: string;
+}
+
+function buildMediaForm(payload: MediaUploadPayload): FormData {
+  const form = new FormData();
+  form.append('file', payload.file, payload.file.name);
+  form.append('duration_seconds', String(payload.durationSeconds));
+  form.append('client_message_id', payload.client_message_id);
+  return form;
+}
+
+export function sendAudio(
+  type: ChatType,
+  chatId: string,
+  payload: MediaUploadPayload,
+  token: string,
+): Promise<Message> {
+  return request<Message>(`/${segmentFor(type)}/${chatId}/audio`, {
+    method: 'POST',
+    token,
+    body: buildMediaForm(payload),
+  });
+}
+
+export function sendVideoNote(
+  type: ChatType,
+  chatId: string,
+  payload: MediaUploadPayload,
+  token: string,
+): Promise<Message> {
+  return request<Message>(`/${segmentFor(type)}/${chatId}/video-notes`, {
+    method: 'POST',
+    token,
+    body: buildMediaForm(payload),
+  });
+}
+
 export function markChatRead(
   type: ChatType,
   chatId: string,

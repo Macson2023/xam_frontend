@@ -3,9 +3,11 @@ import { resolveMediaUrl } from '../api/client';
 import type { User } from '../api/types';
 import { formatTime } from '../lib/format';
 import type { ChatMessage } from '../lib/messages';
+import { AudioPlayer } from './AudioPlayer';
 import { Avatar } from './Avatar';
 import { AlertIcon, CheckIcon, ClockIcon, DoubleCheckIcon } from './Icons';
 import { ImageLightbox } from './ImageLightbox';
+import { VideoNote } from './VideoNote';
 
 interface MessageBubbleProps {
   message: ChatMessage;
@@ -28,8 +30,18 @@ export function MessageBubble({
 }: MessageBubbleProps) {
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const isImage = message.message_type === 'image';
+  const isAudio = message.message_type === 'audio';
+  const isVideoNote = message.message_type === 'video_note';
   const imageSrc = message.previewUrl ?? resolveMediaUrl(message.image_url);
+  const mediaSrc = message.previewUrl ?? resolveMediaUrl(message.media_url);
   const imageAlt = message.content || 'Изображение';
+  const bubbleModifier = isImage
+    ? ' message__bubble--image'
+    : isAudio
+      ? ' message__bubble--audio'
+      : isVideoNote
+        ? ' message__bubble--video-note'
+        : '';
 
   return (
     <div
@@ -47,7 +59,7 @@ export function MessageBubble({
         </div>
       ) : null}
 
-      <div className={`message__bubble${isImage ? ' message__bubble--image' : ''}`}>
+      <div className={`message__bubble${bubbleModifier}`}>
         {showAuthor && !isOwn && !grouped ? (
           <span className="message__author">{sender.display_name}</span>
         ) : null}
@@ -75,6 +87,26 @@ export function MessageBubble({
             </button>
           ) : (
             <div className="message__image-placeholder">Изображение недоступно</div>
+          )
+        ) : null}
+
+        {isAudio ? (
+          mediaSrc ? (
+            <AudioPlayer src={mediaSrc} durationSeconds={message.media_duration_seconds} />
+          ) : (
+            <div className="message__media-placeholder">Аудио недоступно</div>
+          )
+        ) : null}
+
+        {isVideoNote ? (
+          mediaSrc ? (
+            <VideoNote
+              src={mediaSrc}
+              durationSeconds={message.media_duration_seconds}
+              pending={message.pending}
+            />
+          ) : (
+            <div className="message__media-placeholder">Видеокружок недоступен</div>
           )
         ) : null}
 
